@@ -1,0 +1,26 @@
+--- a/extension/src/background/state-store.ts
++++ b/extension/src/background/state-store.ts
+@@ -72,14 +72,17 @@
+ 
+   private async load(): Promise<BridgeState> {
+     const stored = await chrome.storage.local.get(Object.values(STORAGE_KEYS));
+-    const settings = isExtensionSettings(stored[STORAGE_KEYS.settings])
+-      ? cloneSettings(stored[STORAGE_KEYS.settings])
++    const storedSettings = stored[STORAGE_KEYS.settings];
++    const storedTheme = stored[STORAGE_KEYS.theme];
++    const storedConnection = stored[STORAGE_KEYS.connection];
++    const settings = isExtensionSettings(storedSettings)
++      ? cloneSettings(storedSettings)
+       : cloneSettings(DEFAULT_SETTINGS);
+-    const theme = isOmarchyTheme(stored[STORAGE_KEYS.theme])
+-      ? structuredClone(stored[STORAGE_KEYS.theme])
++    const theme = isOmarchyTheme(storedTheme)
++      ? structuredClone(storedTheme)
+       : null;
+-    const connection = isConnectionState(stored[STORAGE_KEYS.connection])
+-      ? {...stored[STORAGE_KEYS.connection]}
++    const connection: ConnectionState = isConnectionState(storedConnection)
++      ? {...storedConnection}
+       : {connected: false, changedAt: 0};
+     const state: BridgeState = {
+       schemaVersion: 1,

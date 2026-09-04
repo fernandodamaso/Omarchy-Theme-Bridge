@@ -32,20 +32,26 @@ jobs:
         run: |
           set -euo pipefail
           shopt -s nullglob
+          changed=false
           parts=(scripts/.bootstrap/pr1-source.patch.gz.b64.part-*)
-          if (( ${#parts[@]} == 0 )); then
-            echo "changed=false" >> "$GITHUB_OUTPUT"
-            exit 0
+          if (( ${#parts[@]} > 0 )); then
+            LC_ALL=C printf '%s\n' "${parts[@]}" | sort > /tmp/pr1-parts.list
+            while IFS= read -r part; do cat "$part"; done < /tmp/pr1-parts.list \
+              | base64 --decode \
+              | gzip --decompress \
+              > /tmp/pr1-source.patch
+            git apply --index --check /tmp/pr1-source.patch
+            git apply --index /tmp/pr1-source.patch
+            git rm -- "${parts[@]}"
+            changed=true
           fi
-          LC_ALL=C printf '%s\n' "${parts[@]}" | sort > /tmp/pr1-parts.list
-          while IFS= read -r part; do cat "$part"; done < /tmp/pr1-parts.list \
-            | base64 --decode \
-            | gzip --decompress \
-            > /tmp/pr1-source.patch
-          git apply --index --check /tmp/pr1-source.patch
-          git apply --index /tmp/pr1-source.patch
-          git rm -- "${parts[@]}"
-          echo "changed=true" >> "$GITHUB_OUTPUT"
+          if [[ -f scripts/.bootstrap/pr1-fixes.patch ]]; then
+            git apply --index --check scripts/.bootstrap/pr1-fixes.patch
+            git apply --index scripts/.bootstrap/pr1-fixes.patch
+            git rm scripts/.bootstrap/pr1-fixes.patch
+            changed=true
+          fi
+          echo "changed=$changed" >> "$GITHUB_OUTPUT"
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
