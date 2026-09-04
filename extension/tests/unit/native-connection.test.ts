@@ -74,4 +74,37 @@ describe("NativeConnection", () => {
     expect(fake.runtime.nativePorts).toHaveLength(3);
     expect(fake.alarms.created.filter((alarm) => alarm.name === RECONNECT_ALARM)).toHaveLength(1);
   });
+
+  it("does not let delayed ready handling reconnect a port after it disconnected", async () => {
+    const fake = installFakeChrome();
+    const store = new BridgeStateStore();
+    await store.initialize();
+    const connection = new NativeConnection(store, "0.1.0");
+    await connection.requestReconnect();
+    const port = fake.runtime.latestNativePort();
+
+    let clearStartedResolve!: () => void;
+    let clearReleaseResolve!: () => void;
+    const clearStarted = new Promise<void>((resolve) => {
+      clearStartedResolve = resolve;
+    });
+    const clearRelease = new Promise<void>((resolve) => {
+      clearReleaseResolve = resolve;
+    });
+    fake.alarms.clear = async () => {
+      clearStartedResolve();
+      await clearRelease;
+      return true;
+    };
+
+    port.emitMessage({type: "host.ready", protocolVersion: 1, hostVersion: "0.1.0"});
+    await clearStarted;
+    fake.runtime.disconnectLatest("Native host exited during handshake.");
+    await fake.flush();
+    expect((await store.get()).connection.connected).toBe(false);
+
+    clearReleaseResolve();
+    await fake.flush();
+    expect((await store.get()).connection.connected).toBe(false);
+  });
 });
