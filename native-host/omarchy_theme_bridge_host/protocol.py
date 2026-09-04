@@ -15,7 +15,11 @@ class ProtocolError(RuntimeError):
     """A native message is malformed or unsupported."""
 
 
-class MessageTooLarge(ProtocolError):
+class FramingError(ProtocolError):
+    """A native message cannot be safely resynchronized on the current stream."""
+
+
+class MessageTooLarge(FramingError):
     """A message exceeded the application-level 64 KiB limit."""
 
 
@@ -44,7 +48,7 @@ def _read_exact(stream: BinaryIO, length: int) -> bytes:
     while remaining:
         chunk = stream.read(remaining)
         if not chunk:
-            raise ProtocolError("Unexpected EOF")
+            raise FramingError("Unexpected EOF")
         chunks.append(chunk)
         remaining -= len(chunk)
     return b"".join(chunks)
@@ -55,7 +59,7 @@ def read_message(stream: BinaryIO) -> JsonObject | None:
     if header == b"":
         return None
     if len(header) != 4:
-        raise ProtocolError("Truncated message header")
+        raise FramingError("Truncated message header")
     (length,) = struct.unpack("=I", header)
     if length > MAX_MESSAGE_BYTES:
         raise MessageTooLarge("Message exceeds 64 KiB limit")
