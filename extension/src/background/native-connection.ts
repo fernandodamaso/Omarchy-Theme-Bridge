@@ -16,6 +16,7 @@ export class NativeConnection {
   private immediateRetries = 0;
   private readyPort: chrome.runtime.Port | null = null;
   private suppressReconnectPort: chrome.runtime.Port | null = null;
+  private eventQueue: Promise<void> = Promise.resolve();
 
   constructor(
     private readonly store: BridgeStateStore,
@@ -36,15 +37,20 @@ export class NativeConnection {
     return this.connecting;
   }
 
+  private enqueueEvent(action: () => Promise<void>): void {
+    const next = this.eventQueue.then(action, action);
+    this.eventQueue = next.catch(() => undefined);
+  }
+
   private openPort(): void {
     if (this.disposed || this.port) return;
     const port = chrome.runtime.connectNative(NATIVE_HOST_NAME);
     this.port = port;
     port.onMessage.addListener((message: unknown) => {
-      void this.handleMessage(port, message);
+      this.enqueueEvent(() => this.handleMessage(port, message));
     });
     port.onDisconnect.addListener(() => {
-      void this.handleDisconnect(port);
+      this.enqueueEvent(() => this.handleDisconnect(port));
     });
     port.postMessage({
       type: "hello",
