@@ -52,6 +52,13 @@ jobs:
         with:
           node-version: "22"
 
+      - name: Use npm 11
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --global npm@11.17.0 --ignore-scripts --no-audit --no-fund
+          test "$(npm --version)" = "11.17.0"
+
       - name: Generate deterministic npm lockfile
         working-directory: extension
         run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
