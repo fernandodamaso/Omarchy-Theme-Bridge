@@ -14,7 +14,7 @@ on:
       - "docs/**"
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   verify:
@@ -23,35 +23,6 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Materialize staged PR 1 source bundle
-        id: materialize
-        shell: bash
-        run: |
-          set -euo pipefail
-          shopt -s nullglob
-          changed=false
-          parts=(scripts/.bootstrap/pr1-source.patch.gz.b64.part-*)
-          if (( ${#parts[@]} > 0 )); then
-            LC_ALL=C printf '%s\n' "${parts[@]}" | sort > /tmp/pr1-parts.list
-            while IFS= read -r part; do cat "$part"; done < /tmp/pr1-parts.list \
-              | base64 --decode \
-              | gzip --decompress \
-              > /tmp/pr1-source.patch
-            git apply --index --check /tmp/pr1-source.patch
-            git apply --index /tmp/pr1-source.patch
-            git rm -- "${parts[@]}"
-            changed=true
-          fi
-          if [[ -f scripts/.bootstrap/pr1-fixes.patch ]]; then
-            git apply --index --check scripts/.bootstrap/pr1-fixes.patch
-            git apply --index scripts/.bootstrap/pr1-fixes.patch
-            git rm scripts/.bootstrap/pr1-fixes.patch
-            changed=true
-          fi
-          echo "changed=$changed" >> "$GITHUB_OUTPUT"
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -64,10 +35,6 @@ jobs:
           set -euo pipefail
           npm install --global npm@11.17.0 --ignore-scripts --no-audit --no-fund
           test "$(npm --version)" = "11.17.0"
-
-      - name: Generate deterministic npm lockfile
-        working-directory: extension
-        run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
 
       - name: Install extension dependencies
         working-directory: extension
@@ -121,9 +88,13 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          git diff --check HEAD --
+          git diff --check
           if find . -type f \( -name '*.pem' -o -name '*.key' \) -print -quit | grep -q .; then
             echo "Private key material must not be committed" >&2
+            exit 1
+          fi
+          if find . -type d -name '*.egg-info' -print -quit | grep -q .; then
+            echo "Generated Python package metadata must not be committed" >&2
             exit 1
           fi
           if grep -RInE '\b(TODO|TBD|FIXME)\b' \
@@ -132,14 +103,3 @@ jobs:
             echo "Unresolved placeholder marker found" >&2
             exit 1
           fi
-
-      - name: Commit verified source and lockfile
-        if: github.event_name == 'push' && steps.materialize.outputs.changed == 'true'
-        shell: bash
-        run: |
-          set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
-          git commit -m "feat: add foundation and native bridge"
-          git push
