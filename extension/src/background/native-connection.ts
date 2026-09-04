@@ -76,7 +76,6 @@ export class NativeConnection {
 
     if (message.type === "host.ready") {
       this.readyPort = port;
-      this.immediateRetries = 0;
       await chrome.alarms.clear(RECONNECT_ALARM);
     }
     await this.store.applyHostMessage(message);
