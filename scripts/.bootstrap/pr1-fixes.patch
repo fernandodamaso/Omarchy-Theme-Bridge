@@ -76,3 +76,12 @@
      await fake.flush();
  
      expect(document.getElementById("omarchy-theme-bridge-bootstrap")).not.toBeNull();
+--- a/native-host/pyproject.toml
++++ b/native-host/pyproject.toml
+@@ -14,3 +14,6 @@
+ [tool.pytest.ini_options]
+ testpaths = ["tests"]
+ addopts = "-ra"
++
++[tool.setuptools]
++packages = ["omarchy_theme_bridge_host"]
