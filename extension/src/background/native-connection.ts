@@ -50,7 +50,8 @@ export class NativeConnection {
       this.enqueueEvent(() => this.handleMessage(port, message));
     });
     port.onDisconnect.addListener(() => {
-      this.enqueueEvent(() => this.handleDisconnect(port));
+      const disconnectMessage = chrome.runtime.lastError?.message;
+      this.enqueueEvent(() => this.handleDisconnect(port, disconnectMessage));
     });
     port.postMessage({
       type: "hello",
@@ -88,7 +89,7 @@ export class NativeConnection {
     await this.onStateChanged();
   }
 
-  private async handleDisconnect(port: chrome.runtime.Port): Promise<void> {
+  private async handleDisconnect(port: chrome.runtime.Port, message: string | undefined): Promise<void> {
     if (this.port !== port) return;
     this.port = null;
     if (this.readyPort === port) this.readyPort = null;
@@ -99,7 +100,7 @@ export class NativeConnection {
       return;
     }
 
-    const error = this.mapDisconnectError(chrome.runtime.lastError?.message);
+    const error = this.mapDisconnectError(message);
     await this.store.setConnectionError(error);
     await this.onStateChanged();
 
