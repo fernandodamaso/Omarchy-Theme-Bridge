@@ -1,0 +1,12 @@
+extension/node_modules/
+extension/dist/
+extension/test-results/
+extension/playwright-report/
+native-host/.venv/
+**/__pycache__/
+*.egg-info/
+.pytest_cache/
+*.pyc
+*.pem
+*.key
+.DS_Store

@@ -1,0 +1,104 @@
+name: PR 1 verification
+
+on:
+  push:
+    branches:
+      - feat/foundation-native-bridge
+  pull_request:
+    paths:
+      - ".github/workflows/pr1.yml"
+      - "extension/**"
+      - "native-host/**"
+      - "scripts/**"
+      - "README.md"
+      - "docs/**"
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Use npm 11
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --global npm@11.17.0 --ignore-scripts --no-audit --no-fund
+          test "$(npm --version)" = "11.17.0"
+
+      - name: Install extension dependencies
+        working-directory: extension
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Type-check extension
+        working-directory: extension
+        run: npm run typecheck
+
+      - name: Test extension
+        working-directory: extension
+        run: npm test
+
+      - name: Build extension
+        working-directory: extension
+        run: npm run build
+
+      - name: Verify extension artifacts
+        working-directory: extension
+        shell: bash
+        run: |
+          set -euo pipefail
+          node -e 'const m=require("./dist/manifest.json"); if(m.manifest_version!==3) process.exit(1)'
+          for file in \
+            dist/background/service-worker.js \
+            dist/content/content-script.js \
+            dist/popup/index.html \
+            dist/options/index.html \
+            dist/manifest.json; do
+            test -f "$file"
+          done
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: native-host/pyproject.toml
+
+      - name: Install native-host test dependencies
+        working-directory: native-host
+        run: python -m pip install -e '.[test]'
+
+      - name: Test native host and installer
+        working-directory: native-host
+        run: |
+          python -m compileall -q omarchy_theme_bridge_host
+          python -m pytest -q
+
+      - name: Check repository safety and formatting
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --check
+          if git ls-files '*.pem' '*.key' | grep -q .; then
+            echo "Private key material must not be committed" >&2
+            exit 1
+          fi
+          if git ls-files | grep -E '(^|/)[^/]+\.egg-info(/|$)' | grep -q .; then
+            echo "Generated Python package metadata must not be committed" >&2
+            exit 1
+          fi
+          if git grep -nE '\b(TODO|TBD|FIXME)\b' -- \
+            extension native-host README.md docs/architecture.md docs/installation.md docs/privacy.md scripts/verify-pr1.sh; then
+            echo "Unresolved placeholder marker found" >&2
+            exit 1
+          fi
