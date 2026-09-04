@@ -36,6 +36,43 @@ def test_legacy_palette_resolves_foundational_and_named_colors() -> None:
     assert result["colors"]["info"] == "#6699ee"
 
 
+def test_ansi_palette_uses_omarchy_foreground_and_selection_fallbacks(tmp_path: Path) -> None:
+    (tmp_path / "colors.toml").write_text(
+        "\n".join([
+            'color0 = "#101112"',
+            'color1 = "#aa1111"',
+            'color2 = "#11aa11"',
+            'color3 = "#aaaa11"',
+            'color4 = "#1144aa"',
+            'color5 = "#aa11aa"',
+            'color6 = "#11aaaa"',
+            'color7 = "#d0d1d2"',
+            'color8 = "#333435"',
+            'color9 = "#bb2222"',
+            'color10 = "#22bb22"',
+            'color11 = "#bbbb22"',
+            'color12 = "#2255bb"',
+            'color13 = "#bb22bb"',
+            'color14 = "#22bbbb"',
+            'color15 = "#f0f1f2"',
+            "",
+        ]),
+        encoding="utf-8",
+    )
+
+    result = load_and_normalize(ThemePaths.from_theme_dir(tmp_path))
+
+    assert result["source"]["background"] == "#101112"
+    assert result["source"]["foreground"] == "#d0d1d2"
+    assert result["source"]["lighterBackground"] == "#101112"
+    assert result["source"]["darkForeground"] == "#333435"
+    assert result["source"]["lightForeground"] == "#d0d1d2"
+    assert result["source"]["brightForeground"] == "#f0f1f2"
+    assert result["colors"]["selection"] == "#333435"
+    assert result["colors"]["textStrong"] == "#f0f1f2"
+    assert result["colors"]["textMuted"] == "#333435"
+
+
 def test_identical_normalized_payload_has_stable_generation() -> None:
     paths = ThemePaths.from_theme_dir(FIXTURES / "tokyo-night")
     assert load_and_normalize(paths)["generation"] == load_and_normalize(paths)["generation"]
