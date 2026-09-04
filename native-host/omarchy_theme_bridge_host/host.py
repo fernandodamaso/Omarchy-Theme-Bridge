@@ -12,7 +12,7 @@ from . import PROTOCOL_VERSION, __version__
 from .config import HostConfig
 from .errors import ThemeErrorCode, ThemeLoadError
 from .last_good import LastGoodStore
-from .protocol import HelloMessage, PingMessage, ProtocolError, ReloadMessage, parse_extension_message, read_message, write_message
+from .protocol import FramingError, HelloMessage, PingMessage, ProtocolError, ReloadMessage, parse_extension_message, read_message, write_message
 from .theme_loader import ThemePaths
 from .theme_normalizer import NormalizedTheme, load_and_normalize
 from .watcher import InotifyWatcher
@@ -145,6 +145,9 @@ class NativeHost:
                     if key.data == "stdin":
                         try:
                             raw = read_message(stdin)
+                        except FramingError:
+                            self._send_error(stdout, ThemeErrorCode.PROTOCOL_MISMATCH)
+                            return 5
                         except ProtocolError:
                             self._send_error(stdout, ThemeErrorCode.PROTOCOL_MISMATCH)
                             continue
