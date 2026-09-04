@@ -1,0 +1,36 @@
+import type {OmarchyTheme} from "../../src/shared/theme";
+
+export const TOKYO_THEME = Object.freeze({
+  schemaVersion: 1,
+  generation: `sha256:${"a".repeat(64)}`,
+  name: "Tokyo Night",
+  mode: "dark",
+  colors: {
+    canvas: "#1a1b26",
+    surface: "#202230",
+    surfaceRaised: "#24283b",
+    surfaceInset: "#13141c",
+    text: "#a9b1d6",
+    textStrong: "#c0caf5",
+    textMuted: "#565f89",
+    border: "#414868",
+    accent: "#7aa2f7",
+    selection: "#292e42",
+    danger: "#f7768e",
+    success: "#9ece6a",
+    warning: "#e0af68",
+    info: "#7aa2f7",
+    magenta: "#bb9af7",
+    cyan: "#7dcfff",
+  },
+  source: {
+    background: "#1a1b26",
+    darkBackground: "#13141c",
+    darkerBackground: "#0e0e14",
+    lighterBackground: "#24283b",
+    foreground: "#a9b1d6",
+    darkForeground: "#565f89",
+    lightForeground: "#b4bee6",
+    brightForeground: "#c0caf5",
+  },
+} satisfies OmarchyTheme);
