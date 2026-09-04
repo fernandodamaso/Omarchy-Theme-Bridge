@@ -55,4 +55,23 @@ describe("NativeConnection", () => {
     expect(fake.alarms.created.filter((alarm) => alarm.name === RECONNECT_ALARM)).toHaveLength(1);
     expect((await store.get()).connection.error).toBe("HOST_NOT_FOUND");
   });
+
+  it("keeps the retry budget bounded when the host repeatedly becomes ready then crashes", async () => {
+    const fake = installFakeChrome();
+    const store = new BridgeStateStore();
+    await store.initialize();
+    const connection = new NativeConnection(store, "0.1.0");
+    await connection.requestReconnect();
+
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const port = fake.runtime.latestNativePort();
+      port.emitMessage({type: "host.ready", protocolVersion: 1, hostVersion: "0.1.0"});
+      await fake.flush();
+      fake.runtime.disconnectLatest("Native host exited after handshake.");
+      await fake.flush();
+    }
+
+    expect(fake.runtime.nativePorts).toHaveLength(3);
+    expect(fake.alarms.created.filter((alarm) => alarm.name === RECONNECT_ALARM)).toHaveLength(1);
+  });
 });
