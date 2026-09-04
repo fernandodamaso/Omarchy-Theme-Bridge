@@ -89,16 +89,15 @@ jobs:
         run: |
           set -euo pipefail
           git diff --check
-          if find . -type f \( -name '*.pem' -o -name '*.key' \) -print -quit | grep -q .; then
+          if git ls-files '*.pem' '*.key' | grep -q .; then
             echo "Private key material must not be committed" >&2
             exit 1
           fi
-          if find . -type d -name '*.egg-info' -print -quit | grep -q .; then
+          if git ls-files | grep -E '(^|/)[^/]+\.egg-info(/|$)' | grep -q .; then
             echo "Generated Python package metadata must not be committed" >&2
             exit 1
           fi
-          if grep -RInE '\b(TODO|TBD|FIXME)\b' \
-            --exclude-dir=.git --exclude-dir=node_modules --exclude-dir=dist \
+          if git grep -nE '\b(TODO|TBD|FIXME)\b' -- \
             extension native-host README.md docs/architecture.md docs/installation.md docs/privacy.md scripts/verify-pr1.sh; then
             echo "Unresolved placeholder marker found" >&2
             exit 1
